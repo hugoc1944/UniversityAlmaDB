@@ -156,6 +156,46 @@ ALTER TABLE UniversityAlma.Favorites
 ADD CONSTRAINT FK_Favorites_Course FOREIGN KEY (CourseId) REFERENCES UniversityAlma.Course(CourseId);
 GO
 
+-- Procedures
+-- Procedure to resequence notification ids (trigAfterDeleteNotification trigger)
+
+DROP PROCEDURE IF EXISTS UniversityAlma.ReSequenceNotificationIDS;
+GO
+
+CREATE PROCEDURE UniversityAlma.ReSequenceNotificationIDS
+AS
+BEGIN
+	SET NOCOUNT ON;
+	-- Temporary table to store the resequenced rows
+	CREATE TABLE #TempNotification(
+		NewID INT IDENTITY(1,1),
+		NotificationId INT,
+		UserId INT,
+		Title VARCHAR(100),
+		Info VARCHAR(300),
+		Icon VARCHAR(255),
+		Checked BIT
+	);
+	-- Insert existing rows
+	INSERT INTO #TempNotification(NotificationId, UserId, Title, Info, Icon, Checked)
+	SELECT NotificationId, UserId, Title, Info, Icon, Checked
+	FROM UniversityAlma.Notification
+	ORDER BY NotificationId;
+	-- Delete all existing rows of the notification table
+	DELETE FROM UniversityAlma.Notification;
+	-- Enable identity insert
+	SET IDENTITY_INSERT UniversityAlma.Notification ON;
+	-- Insert the resequenced from tempo to the notification table
+	INSERT INTO UniversityAlma.Notification(NotificationId, UserId, Title, Info, Icon, Checked)
+	SELECT NewId, UserId, Title, Info, Icon, Checked
+	FROM #TempNotification;
+	-- dISABLE identity insert
+	SET IDENTITY_INSERT UniversityAlma.Notification OFF;
+	-- Drop the temp table
+	DROP TABLE #TempNotification;
+END;
+GO
+
 -- Triggers
 
 -- Trigger to increment FavCount entry in Course table according to Favorites table
@@ -301,5 +341,17 @@ AS
 BEGIN
 	DELETE FROM UniversityAlma.Notification
 	WHERE Checked = 1;
+END;
+GO
+
+--
+
+-- NotificationId resequence trigger
+CREATE TRIGGER UniversityAlma.trigAfterDeleteNotification
+ON UniversityAlma.Notification
+AFTER DELETE
+AS
+BEGIN
+	EXEC UniversityAlma.ReSequenceNotificationIDS;
 END;
 GO
