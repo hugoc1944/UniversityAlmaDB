@@ -45,12 +45,12 @@ INSERT INTO UniversityAlma.Course (Title, Description, CategoryId, MentorId) VAL
 GO
 
 -- Insert sessions
-INSERT INTO UniversityAlma.Session (CourseId, Number, Title, Media, Duration) VALUES
-(1, 1, 'Ocean Sounds', 'ocean_sounds.mp3', 93),
-(1, 2, 'Heavy Raining', 'raining.mp3', 60),
-(2, 1, 'Whale Sounds', 'whales.mp3', 89),
-(2, 2, 'Waves', 'waves.mp3', 90),
-(2, 3, 'Windy Hills', 'wind.mp3', 105);
+INSERT INTO UniversityAlma.Session (CourseId, Title, Media, Duration) VALUES
+(1, 'Ocean Sounds', 'ocean_sounds.mp3', 93),
+(1, 'Heavy Raining', 'raining.mp3', 60),
+(2, 'Whale Sounds', 'whales.mp3', 89),
+(2, 'Waves', 'waves.mp3', 90),
+(2, 'Windy Hills', 'wind.mp3', 105);
 GO
 
 -- Insert favorites - User1 fav course 1, Admin fav course 2

@@ -20,6 +20,7 @@ GO
 CREATE TABLE UniversityAlma.[User](
 	UserId INT PRIMARY KEY,
 	ProfileId INT NOT NULL,
+	
 	CONSTRAINT FK_User_Profile FOREIGN KEY (ProfileId) REFERENCES UniversityAlma.Profile(ProfileId)
 );
 GO
@@ -112,7 +113,7 @@ GO
 CREATE TABLE UniversityAlma.Session(
 	SessionId INT IDENTITY(1,1) PRIMARY KEY,
 	CourseId INT NOT NULL,
-	Number INT NOT NULL,
+	Number INT,
 	Title VARCHAR(100) NOT NULL,
 	Media VARCHAR(MAX),
 	Duration INT,
@@ -157,8 +158,7 @@ ADD CONSTRAINT FK_Favorites_Course FOREIGN KEY (CourseId) REFERENCES UniversityA
 GO
 
 -- Procedures
--- Procedure to resequence notification ids (trigAfterDeleteNotification trigger)
-
+-- Procedure to resequence notification ids
 DROP PROCEDURE IF EXISTS UniversityAlma.ReSequenceNotificationIDS;
 GO
 
@@ -196,29 +196,33 @@ BEGIN
 END;
 GO
 
--- Triggers
-
--- Trigger to increment FavCount entry in Course table according to Favorites table
--- Insert (Increment FavCount)
-CREATE TRIGGER trigIncrementFavCount
-ON UniversityAlma.Favorites
-AFTER INSERT
-AS
-BEGIN
-	UPDATE UniversityAlma.Course
-	SET FavCount = FavCount + 1
-	WHERE CourseId IN (SELECT CourseId FROM inserted);
-END;
+-- Procedure to resequence session numbers on delete
+DROP PROCEDURE IF EXISTS UniversityAlma.ReSequenceSessionNumbers;
 GO
--- Delete (Decrement FavCount)
-CREATE TRIGGER trigDecrementFavCount
-ON UniversityAlma.Favorites
-AFTER DELETE
+
+CREATE PROCEDURE UniversityAlma.ReSequenceSessionNumbers
+	@CourseId INT
 AS
 BEGIN
-    UPDATE UniversityAlma.Course
-    SET FavCount = FavCount - 1
-    WHERE CourseId IN (SELECT CourseId FROM deleted);
+	SET NOCOUNT ON;
+
+	CREATE TABLE #TempSession (
+		NewNumber INT IDENTITY(1,1),
+		SessionId INT
+	);
+	-- Insert existing sessions into temp table
+	INSERT INTO #TempSession (SessionId)
+	SELECT SessionId
+	FROM UniversityAlma.Session
+	WHERE CourseId = @CourseId
+	ORDER BY SessionId;
+	-- Update session numbers based on temp table
+	UPDATE s
+	SET s.Number = t.NewNumber
+	FROM UniversityAlma.Session s
+	JOIN #TempSession t ON s.SessionId = t.SessionId;
+	-- Drop temp table
+	DROP TABLE #TempSession;
 END;
 GO
 
@@ -353,5 +357,66 @@ AFTER DELETE
 AS
 BEGIN
 	EXEC UniversityAlma.ReSequenceNotificationIDS;
+END;
+GO
+
+--
+
+-- Session number trigger (On session insert)
+CREATE TRIGGER UniversityAlma.trigInsertSessionNumber
+ON UniversityAlma.Session
+AFTER INSERT
+AS
+BEGIN
+	DECLARE @CourseId INT;
+	DECLARE @SessionId INT;
+	DECLARE @SessionNumber INT;
+
+	-- Loop through inserted rows
+	DECLARE cur CURSOR FOR
+	SELECT SessionId, CourseId 
+	FROM inserted
+	OPEN cur;
+	FETCH NEXT FROM cur INTO @SessionId, @CourseId;
+
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		-- Get the next session number
+		SELECT @SessionNumber = COUNT(*)
+		FROM UniversityAlma.Session
+		WHERE CourseId = @CourseId AND SessionId <= @SessionId;
+
+		UPDATE UniversityAlma.Session
+		SET Number = @SessionNumber
+		WHERE SessionId = @SessionId;
+		
+		FETCH NEXT FROM cur INTO @SessionId, @CourseId;
+	END
+
+	CLOSE cur;
+	DEALLOCATE cur;
+END;
+GO
+
+-- Resequence numbers on session delete
+CREATE TRIGGER UniversityAlma.trigDeleteSessionNumber
+ON UniversityAlma.Session
+AFTER DELETE
+AS
+BEGIN
+	DECLARE @CourseId INT;
+	DECLARE cur CURSOR FOR
+	SELECT DISTINCT CourseId
+	FROM deleted;
+
+	OPEN cur;
+	FETCH NEXT FROM cur INTO @CourseId;
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		EXEC UniversityAlma.ReSequenceSessionNumbers @CourseId;
+		FETCH NEXT FROM cur INTO @CourseId;
+	END
+	CLOSE cur;
+	DEALLOCATE cur;
 END;
 GO
