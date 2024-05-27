@@ -4,41 +4,30 @@ GO
 -- Profile Table
 CREATE TABLE UniversityAlma.Profile(
 	ProfileId INT IDENTITY(1,1) PRIMARY KEY,
-	Name VARCHAR(100),
-	Password VARCHAR(128),
-	Email VARCHAR(100),
-	Username VARCHAR(50) UNIQUE ,
+	Name VARCHAR(100) NOT NULL,
+	Password VARCHAR(128) NOT NULL,
+	Email VARCHAR(100) NOT NULL,
+	Username VARCHAR(50) UNIQUE  NOT NULL,
 	PhoneNumber VARCHAR(15),
 	Gender VARCHAR(10),
 	ProfilePic VARBINARY(255),
-	Birthday DATE,
-	MailList BIT
+	Birthday DATE NOT NULL,
+	MailList BIT DEFAULT 0
 );
 GO
 
 -- User Table
 CREATE TABLE UniversityAlma.[User](
 	UserId INT IDENTITY(1,1) PRIMARY KEY,
-	ProfileId INT,
+	ProfileId INT NOT NULL,
 	CONSTRAINT FK_User_Profile FOREIGN KEY (ProfileId) REFERENCES UniversityAlma.Profile(ProfileId)
 );
 GO
 
--- Favorites Table
-CREATE TABLE UniversityAlma.Favorites(
-	ProfileId INT,
-	CourseId INT,
-
-	CONSTRAINT PK_Favorites PRIMARY KEY (ProfileId, CourseId),
-	CONSTRAINT FK_Favorites_Profile FOREIGN KEY (ProfileId) REFERENCES UniversityAlma.Profile(ProfileId),
-);
-GO
-
-
 -- Admin Table
 CREATE TABLE UniversityAlma.Admin(
-	AdminId INT PRIMARY KEY,
-	UserId INT,
+	AdminId INT IDENTITY(1,1) PRIMARY KEY,
+	UserId INT NOT NULL,
 
 	CONSTRAINT FK_Admin_User FOREIGN KEY (UserId) REFERENCES UniversityAlma.[User](UserId)
 );
@@ -46,29 +35,39 @@ GO
 
 -- Mentor Table
 CREATE TABLE UniversityAlma.Mentor(
-	MentorId INT PRIMARY KEY,
-	UserId INT,
+	MentorId INT IDENTITY(1,1) PRIMARY KEY,
+	UserId INT NOT NULL,
 	Experience VARCHAR(MAX),
-	Verified BIT,
+	Verified BIT DEFAULT 0,
 
 	CONSTRAINT FK_Mentor_User FOREIGN KEY (UserId) REFERENCES UniversityAlma.[User](UserId)
 );
 GO
 
+-- Certificate Table
+CREATE TABLE UniversityAlma.Certificates (
+	CertificateId INT IDENTITY(1,1) PRIMARY KEY,
+	MentorId INT NOT NULL,
+	Title VARCHAR(100) NOT NULL,
+
+	CONSTRAINT FK_Certificates_Mentor FOREIGN KEY (MentorId) REFERENCES UniversityAlma.Mentor(MentorId)
+);
+GO
+
 -- Category Table
 CREATE TABLE UniversityAlma.Category(
-	CategoryId INT PRIMARY KEY,
-	Type VARCHAR(100)
+	CategoryId INT PRIMARY KEY NOT NULL,
+	Type VARCHAR(100) NOT NULL
 );
 GO
 
 -- Course Table
 CREATE TABLE UniversityAlma.Course(
-	CourseId INT PRIMARY KEY,
-	Title VARCHAR(100),
-	Description VARCHAR(500),
-	CategoryId INT,
-	MentorId INT,
+	CourseId INT IDENTITY(1,1) PRIMARY KEY,
+	Title VARCHAR(100) NOT NULL,
+	Description VARCHAR(500) NOT NULL,
+	CategoryId INT NOT NULL,
+	MentorId INT NOT NULL,
 	FavCount INT DEFAULT 0,
 
 	CONSTRAINT  FK_Course_Category FOREIGN KEY (CategoryId) REFERENCES UniversityAlma.Category(CategoryId),
@@ -76,20 +75,30 @@ CREATE TABLE UniversityAlma.Course(
 );
 GO
 
+-- Favorites Table
+CREATE TABLE UniversityAlma.Favorites(
+	ProfileId INT NOT NULL,
+	CourseId INT NOT NULL,
+
+	CONSTRAINT PK_Favorites PRIMARY KEY (ProfileId, CourseId),
+	CONSTRAINT FK_Favorites_Profile FOREIGN KEY (ProfileId) REFERENCES UniversityAlma.Profile(ProfileId),
+);
+GO
+
 -- Audit Types
 CREATE TABLE UniversityAlma.AuditTypes(
-	AuditTypeID INT PRIMARY KEY,
-	AuditTypeName VARCHAR(150)
+	AuditTypeID INT PRIMARY KEY NOT NULL,
+	AuditTypeName VARCHAR(150) NOT NULL
 );
 GO
 
 -- Audits Table
 CREATE TABLE UniversityAlma.Audits(
-	AuditId INT PRIMARY KEY,
-	AdminId INT,
+	AuditId INT IDENTITY(1,1) PRIMARY KEY,
+	AdminId INT NOT NULL,
 	UserId INT,
 	CourseId INT,
-	AuditTypeId INT,
+	AuditTypeId INT NOT NULL,
 	Date DATE,
 	
 	CONSTRAINT FK_Audits_Admin FOREIGN KEY (AdminId) REFERENCES UniversityAlma.Admin(AdminId),
@@ -101,10 +110,10 @@ GO
 
 -- Session Table
 CREATE TABLE UniversityAlma.Session(
-	SessionId INT PRIMARY KEY,
-	CourseId INT,
-	Number INT,
-	Title VARCHAR(100),
+	SessionId INT IDENTITY(1,1) PRIMARY KEY,
+	CourseId INT NOT NULL,
+	Number INT NOT NULL,
+	Title VARCHAR(100) NOT NULL,
 	Media VARCHAR(MAX),
 	Duration INT,
 
@@ -112,12 +121,11 @@ CREATE TABLE UniversityAlma.Session(
 );
 GO
 
-
 -- History Table
 CREATE TABLE UniversityAlma.History(
-	ProfileId INT PRIMARY KEY,
-	CourseId INT,
-	SessionNumber INT,
+	ProfileId INT PRIMARY KEY NOT NULL,
+	CourseId INT NOT NULL,
+	SessionNumber INT NOT NULL,
 	ElapsedTime INT,
 
 	CONSTRAINT FK_History_Profile FOREIGN KEY (ProfileId) REFERENCES UniversityAlma.Profile(ProfileId),
@@ -128,22 +136,14 @@ GO
 -- Notification Table
 CREATE TABLE UniversityAlma.Notification(
 	NotificationId INT IDENTITY(1,1) PRIMARY KEY,
-	UserId INT,
-	Title VARCHAR(100),
+	UserId INT NOT NULL,
+	Title VARCHAR(100) NOT NULL,
 	Info VARCHAR(300),
-	Icon VARCHAR(255)
+	Icon VARCHAR(255),
+	Checked BIT DEFAULT 0
 );
 GO
 
--- Certificate Table
-CREATE TABLE UniversityAlma.Certificates (
-	CertificateId INT PRIMARY KEY,
-	MentorId INT,
-	Title VARCHAR(100),
-
-	CONSTRAINT FK_Certificates_Mentor FOREIGN KEY (MentorId) REFERENCES UniversityAlma.Mentor(MentorId)
-);
-GO
 
 -- Relationships
 ALTER TABLE UniversityAlma.Notification
@@ -182,6 +182,7 @@ BEGIN
 END;
 GO
 
+--
 
 -- Trigger for audit notification
 CREATE TRIGGER TrigAuditNotification
@@ -198,7 +199,9 @@ BEGIN
 END;
 GO
 
--- Trigger to insert user o profile create
+--
+
+-- Trigger to insert/delete user on profile create/delete
 CREATE TRIGGER trigInsertUser
 ON UniversityAlma.Profile
 AFTER INSERT
@@ -207,5 +210,96 @@ BEGIN
 	INSERT INTO UniversityAlma.[User] (ProfileId)
 	SELECT ProfileId
 	FROM inserted;
+END;
+GO
+
+CREATE TRIGGER trigDeleteUser
+ON UniversityAlma.Profile
+AFTER DELETE
+AS
+BEGIN
+	DELETE FROM UniversityAlma.[User]
+	WHERE ProfileId IN (SELECT ProfileId FROM deleted);
+END;
+GO
+
+--
+
+-- Favorite Notification for the Mentor trigger
+CREATE TRIGGER trigFavoriteNotification
+ON UniversityAlma.Favorites
+AFTER INSERT
+AS
+BEGIN
+	-- Variables to hold notification details
+	DECLARE @CourseId INT;
+	DECLARE @MentorId INT;
+	DECLARE @UserId INT;
+	DECLARE @CourseTitle VARCHAR(100);
+	DECLARE @NotificationId INT;
+
+	-- Loop trough the inserted favorites for a specific course
+	DECLARE cur CURSOR FOR
+	SELECT CourseId
+	FROM inserted;
+
+	OPEN cur;
+	FETCH NEXT FROM cur INTO @CourseId;
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		-- Get the mentorId and courseId for the favorited course
+		SELECT @MentorId = MentorId, @CourseTitle = Title
+		FROM UniversityAlma.Course
+		WHERE CourseId = @CourseId;
+		-- Get the userId associated to the mentor
+		SELECT @UserId = UserId
+		FROM UniversityAlma.Mentor
+		WHERE MentorId = @MentorId;
+		-- Get total number of favorites for the course
+		DECLARE @TotalFavorites INT;
+		SELECT @TotalFavorites = COUNT(*)
+		FROM UniversityAlma.Favorites
+		WHERE CourseId = @CourseId;
+
+		-- Check if there is already a favorites notification for this mentor and course
+		SELECT @NotificationId = NotificationId
+		FROM UniversityAlma.Notification
+		WHERE UserId = @UserId
+			AND Title = 'New favorites for your course'
+			AND Info LIKE '%' + @CourseTitle + '%'
+			AND Checked = 0;
+		
+		IF @NotificationId IS NOT NULL
+		BEGIN
+			-- Update the existing notification
+			UPDATE UniversityAlma.Notification
+			SET Info = 'Your course ' + @CourseTitle + ' has ' + CAST(@TotalFavorites AS VARCHAR) + ' favorites'
+			WHERE NotificationId = @NotificationId;
+		END
+		ELSE
+		BEGIN
+			-- Insert new notification if it doesn't exist
+			INSERT INTO UniversityAlma.Notification(UserId, Title, Info, Icon)
+			VALUES (@UserId, 'New favorites for your course', 'Your course ' + @CourseTitle + ' has ' + CAST(@TotalFavorites AS VARCHAR) + ' favorites', 'fav.png');
+		END
+
+		FETCH NEXT FROM cur INTO @CourseId;
+	END
+
+	CLOSE cur;
+	DEALLOCATE cur;
+END;
+GO
+
+--
+
+-- If a notification is checked, delete the notification
+CREATE TRIGGER trigResetNotification
+ON UniversityAlma.Notification
+AFTER UPDATE
+AS
+BEGIN
+	DELETE FROM UniversityAlma.Notification
+	WHERE Checked = 1;
 END;
 GO
