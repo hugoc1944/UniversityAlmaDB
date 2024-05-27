@@ -18,7 +18,7 @@ GO
 
 -- User Table
 CREATE TABLE UniversityAlma.[User](
-	UserId INT IDENTITY(1,1) PRIMARY KEY,
+	UserId INT PRIMARY KEY,
 	ProfileId INT NOT NULL,
 	CONSTRAINT FK_User_Profile FOREIGN KEY (ProfileId) REFERENCES UniversityAlma.Profile(ProfileId)
 );
@@ -247,8 +247,8 @@ ON UniversityAlma.Profile
 AFTER INSERT
 AS
 BEGIN
-	INSERT INTO UniversityAlma.[User] (ProfileId)
-	SELECT ProfileId
+	INSERT INTO UniversityAlma.[User] (UserId, ProfileId)
+	SELECT ProfileId, ProfileId
 	FROM inserted;
 END;
 GO
