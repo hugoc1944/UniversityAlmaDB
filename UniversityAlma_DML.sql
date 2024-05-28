@@ -10,7 +10,7 @@ CREATE TABLE UniversityAlma.Profile(
 	Username VARCHAR(50) UNIQUE  NOT NULL,
 	PhoneNumber VARCHAR(15),
 	Gender VARCHAR(10),
-	ProfilePic VARBINARY(255),
+	ProfilePic VARBINARY(MAX),
 	Birthday DATE NOT NULL,
 	MailList BIT DEFAULT 0
 );
@@ -226,6 +226,8 @@ BEGIN
 END;
 GO
 
+DROP PROCEDURE IF EXISTS UniversityAlma.RegisterUser;
+GO
 -- User login and register procedures
 -- Register
 CREATE PROCEDURE UniversityAlma.RegisterUser
@@ -235,12 +237,28 @@ CREATE PROCEDURE UniversityAlma.RegisterUser
 	@Username VARCHAR(50),
 	@PhoneNumber VARCHAR(15),
 	@Gender VARCHAR(10),
-	@ProfilePic VARBINARY(255),
+	@ProfilePic VARBINARY(MAX) = NULL, --Default is null
 	@Birthday DATE,
-	@MailList BIT
+	@MailList BIT,
+	@UserId INT OUTPUT,
+	@ReturnCode INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
+
+	-- Check if username exists
+	IF EXISTS (SELECT 1 FROM UniversityAlma.Profile WHERE Username = @Username)
+	BEGIN
+		SET @ReturnCode = -1;
+		RETURN; -- Username exists
+	END
+	-- Check if email exists
+	IF EXISTS (SELECT 1 FROM UniversityAlma.Profile WHERE Email = @Email)
+	BEGIN
+		SET @ReturnCode = -2;
+		RETURN; -- Email exists
+	END
+
 	-- Insert the new profile
 	INSERT INTO UniversityAlma.Profile(Name, Password, Email, Username, PhoneNumber, Gender, ProfilePic, Birthday, MailList)
 	VALUES(@Name, @Password, @Email, @Username, @PhoneNumber, @Gender, @ProfilePic, @Birthday, @MailList);
@@ -248,13 +266,14 @@ BEGIN
 	DECLARE @ProfileId INT;
 	SET @ProfileId = SCOPE_IDENTITY();
 	-- Retrieve the UserId based on this new ProfileId
-	DECLARE @UserId INT;
 	SELECT @UserId = UserId FROM UniversityAlma.[User] WHERE ProfileId = @ProfileId;
 	-- Return the new userId
-	SELECT @UserId AS UserId;
+	SET @ReturnCode = 0; -- Registration successful
 END;
 GO
 --Login
+DROP PROCEDURE IF EXISTS UniversityAlma.LoginUser;
+GO
 CREATE PROCEDURE UniversityAlma.LoginUser
 	@Username VARCHAR(50),
 	@Password VARCHAR(120)
@@ -271,10 +290,12 @@ BEGIN
 	END
 	ELSE
 	BEGIN
-		-- Return error because the credentials are invalid
-		RAISERROR('Invalid username or password', 16, 1);
+		-- Return null because the credentials are invalid
+		SELECT NULL;
 	END
 END;
+GO
+DROP PROCEDURE IF EXISTS UniversityAlma.RegisterMentor;
 GO
 -- Mentor registration
 CREATE PROCEDURE UniversityAlma.RegisterMentor
@@ -284,7 +305,7 @@ CREATE PROCEDURE UniversityAlma.RegisterMentor
     @Username VARCHAR(50),
     @PhoneNumber VARCHAR(15),
     @Gender VARCHAR(10),
-    @ProfilePic VARBINARY(255),
+    @ProfilePic VARBINARY(MAX), -- Default is NULL
     @Birthday DATE,
     @MailList BIT,
     @Experience VARCHAR(MAX)
