@@ -115,5 +115,21 @@ namespace UniversityAlmaApp
                 e.Handled = true;
             }
         }
+
+        private void btnBackToLogin_Click(object sender, EventArgs e)
+        {
+            // Hide the register form
+            this.Hide();
+
+            // Show login form
+            LoginForm loginForm = new LoginForm();
+            loginForm.ShowDialog();
+
+        }
+
+        private void RegisterForm_Load(object sender, EventArgs e)
+        {
+
+        }
     }
 }

@@ -34,6 +34,8 @@
             label3 = new Label();
             txtPassword = new TextBox();
             button1 = new Button();
+            btnRegister = new Button();
+            label4 = new Label();
             SuspendLayout();
             // 
             // label1
@@ -82,11 +84,12 @@
             txtPassword.Name = "txtPassword";
             txtPassword.Size = new Size(289, 27);
             txtPassword.TabIndex = 4;
+            this.txtPassword.UseSystemPasswordChar = true;
             // 
             // button1
             // 
             button1.Font = new Font("Segoe UI", 12F);
-            button1.Location = new Point(26, 292);
+            button1.Location = new Point(26, 304);
             button1.Name = "button1";
             button1.Size = new Size(93, 37);
             button1.TabIndex = 5;
@@ -94,11 +97,34 @@
             button1.UseVisualStyleBackColor = true;
             button1.Click += button1_Click;
             // 
+            // btnRegister
+            // 
+            btnRegister.Font = new Font("Segoe UI", 12F);
+            btnRegister.Location = new Point(144, 304);
+            btnRegister.Name = "btnRegister";
+            btnRegister.Size = new Size(93, 37);
+            btnRegister.TabIndex = 6;
+            btnRegister.Text = "Register";
+            btnRegister.UseVisualStyleBackColor = true;
+            btnRegister.Click += btnRegister_Click;
+            // 
+            // label4
+            // 
+            label4.AutoSize = true;
+            label4.Font = new Font("Segoe UI", 9F);
+            label4.Location = new Point(144, 281);
+            label4.Name = "label4";
+            label4.Size = new Size(163, 20);
+            label4.TabIndex = 7;
+            label4.Text = "Don't have an account?";
+            // 
             // LoginForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(799, 450);
+            Controls.Add(label4);
+            Controls.Add(btnRegister);
             Controls.Add(button1);
             Controls.Add(txtPassword);
             Controls.Add(label3);
@@ -120,5 +146,7 @@
         private Label label3;
         private TextBox txtPassword;
         private Button button1;
+        private Button btnRegister;
+        private Label label4;
     }
 }

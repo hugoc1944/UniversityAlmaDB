@@ -29,8 +29,9 @@ namespace UniversityAlmaApp
             }
         }
 
-        public static bool ExecuteLogin(string storedProcedure, SqlParameter[] parameters)
+        public static bool ExecuteLogin(string storedProcedure, SqlParameter[] parameters, out int userId)
         {
+            userId = -1;
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 using (SqlCommand cmd = new SqlCommand(storedProcedure, conn))
@@ -40,10 +41,25 @@ namespace UniversityAlmaApp
                     {
                         cmd.Parameters.AddRange(parameters);
                     }
-                    conn.Open();
-                    var result = cmd.ExecuteScalar();
+                    //Output params
+                    SqlParameter userIdParam = new SqlParameter("@UserId", System.Data.SqlDbType.Int)
+                    {
+                        Direction = System.Data.ParameterDirection.Output
+                    };
+                    SqlParameter returnCodeParam = new SqlParameter("@ReturnCode", System.Data.SqlDbType.Int)
+                    {
+                        Direction = System.Data.ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(userIdParam);
+                    cmd.Parameters.Add(returnCodeParam);
 
-                    return result != DBNull.Value && result != null;
+                    conn.Open();
+                    cmd.ExecuteScalar();
+
+                    int returnCode = (int)returnCodeParam.Value;
+                    userId = userIdParam.Value != DBNull.Value ? (int)userIdParam.Value : -1;
+
+                    return returnCode == 0;
                 }
             }
         }

@@ -49,6 +49,8 @@
             pictureBoxProfilePic = new PictureBox();
             label10 = new Label();
             label11 = new Label();
+            label12 = new Label();
+            btnBackToLogin = new Button();
             ((System.ComponentModel.ISupportInitialize)pictureBoxProfilePic).BeginInit();
             SuspendLayout();
             // 
@@ -210,7 +212,7 @@
             // btnRegister
             // 
             btnRegister.Font = new Font("Segoe UI", 12F);
-            btnRegister.Location = new Point(26, 427);
+            btnRegister.Location = new Point(27, 436);
             btnRegister.Name = "btnRegister";
             btnRegister.Size = new Size(93, 37);
             btnRegister.TabIndex = 18;
@@ -251,11 +253,34 @@
             label11.TabIndex = 21;
             label11.Text = "Upload File";
             // 
+            // label12
+            // 
+            label12.AutoSize = true;
+            label12.Font = new Font("Segoe UI", 9F);
+            label12.Location = new Point(142, 413);
+            label12.Name = "label12";
+            label12.Size = new Size(178, 20);
+            label12.TabIndex = 23;
+            label12.Text = "Already have an account?";
+            // 
+            // btnBackToLogin
+            // 
+            btnBackToLogin.Font = new Font("Segoe UI", 12F);
+            btnBackToLogin.Location = new Point(142, 436);
+            btnBackToLogin.Name = "btnBackToLogin";
+            btnBackToLogin.Size = new Size(93, 37);
+            btnBackToLogin.TabIndex = 22;
+            btnBackToLogin.Text = "Login";
+            btnBackToLogin.UseVisualStyleBackColor = true;
+            btnBackToLogin.Click += btnBackToLogin_Click;
+            // 
             // RegisterForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 524);
+            Controls.Add(label12);
+            Controls.Add(btnBackToLogin);
             Controls.Add(label11);
             Controls.Add(label10);
             Controls.Add(pictureBoxProfilePic);
@@ -279,6 +304,7 @@
             Controls.Add(label1);
             Name = "RegisterForm";
             Text = "RegisterForm";
+            Load += RegisterForm_Load;
             ((System.ComponentModel.ISupportInitialize)pictureBoxProfilePic).EndInit();
             ResumeLayout(false);
             PerformLayout();
@@ -307,5 +333,7 @@
         private PictureBox pictureBoxProfilePic;
         private Label label10;
         private Label label11;
+        private Label label12;
+        private Button btnBackToLogin;
     }
 }

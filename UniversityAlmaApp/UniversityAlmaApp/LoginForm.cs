@@ -14,6 +14,7 @@ namespace UniversityAlmaApp
 {
     public partial class LoginForm : Form
     {
+        public int LoggedInUserId { get; private set; }
         public LoginForm()
         {
             InitializeComponent();
@@ -49,10 +50,12 @@ namespace UniversityAlmaApp
                 new SqlParameter("@Username", username),
                 new SqlParameter("@Password", password)
             };
-            bool loginSuccess = DatabaseHelper.ExecuteLogin("UniversityAlma.LoginUser", parameters);
+            int userId;
+            bool loginSuccess = DatabaseHelper.ExecuteLogin("UniversityAlma.LoginUser", parameters, out userId);
             if (loginSuccess)
             {
-                MessageBox.Show("Login successful!");
+                LoggedInUserId = userId;
+                MessageBox.Show("Login successful! UserId: " + userId);
             }
             else
             {
@@ -60,5 +63,16 @@ namespace UniversityAlmaApp
             }
         }
 
+        private void btnRegister_Click(object sender, EventArgs e)
+        {
+            // Hide login form
+            this.Hide();
+
+            // Show the register form
+            RegisterForm registerForm = new RegisterForm();
+            registerForm.ShowDialog();
+
+            
+        }
     }
 }

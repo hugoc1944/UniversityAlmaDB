@@ -276,22 +276,29 @@ DROP PROCEDURE IF EXISTS UniversityAlma.LoginUser;
 GO
 CREATE PROCEDURE UniversityAlma.LoginUser
 	@Username VARCHAR(50),
-	@Password VARCHAR(120)
+	@Password VARCHAR(120),
+	@UserId INT OUTPUT,
+	@ReturnCode INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON
+
+	SET @UserId= NULL;
+	SET @ReturnCode = -1;
 	-- Check if username and password match
 	IF EXISTS (SELECT 1 FROM UniversityAlma.Profile WHERE Username = @Username AND Password = @Password)
 	BEGIN
 		-- Retrieve UserId
-		SELECT UserId
+		SELECT @UserId = UserId
 		FROM UniversityAlma.[User]
 		WHERE ProfileId = (SELECT ProfileId FROM UniversityAlma.Profile WHERE Username = @Username);
+	
+		SET @ReturnCode = 0; -- Login successful
 	END
 	ELSE
 	BEGIN
 		-- Return null because the credentials are invalid
-		SELECT NULL;
+		SET @ReturnCode = -1; -- Login failed
 	END
 END;
 GO
