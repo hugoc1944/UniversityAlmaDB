@@ -5,7 +5,7 @@ GO
 CREATE TABLE UniversityAlma.Profile(
 	ProfileId INT IDENTITY(1,1) PRIMARY KEY,
 	Name VARCHAR(100) NOT NULL,
-	Password VARCHAR(128) NOT NULL,
+	Password VARCHAR(120) NOT NULL,
 	Email VARCHAR(100) NOT NULL,
 	Username VARCHAR(50) UNIQUE  NOT NULL,
 	PhoneNumber VARCHAR(15),
@@ -226,6 +226,87 @@ BEGIN
 END;
 GO
 
+-- User login and register procedures
+-- Register
+CREATE PROCEDURE UniversityAlma.RegisterUser
+	@Name VARCHAR(100),
+	@Password VARCHAR(120),
+	@Email VARCHAR(100),
+	@Username VARCHAR(50),
+	@PhoneNumber VARCHAR(15),
+	@Gender VARCHAR(10),
+	@ProfilePic VARBINARY(255),
+	@Birthday DATE,
+	@MailList BIT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	-- Insert the new profile
+	INSERT INTO UniversityAlma.Profile(Name, Password, Email, Username, PhoneNumber, Gender, ProfilePic, Birthday, MailList)
+	VALUES(@Name, @Password, @Email, @Username, @PhoneNumber, @Gender, @ProfilePic, @Birthday, @MailList);
+	-- Retrieve the new profileId
+	DECLARE @ProfileId INT;
+	SET @ProfileId = SCOPE_IDENTITY();
+	-- Retrieve the UserId based on this new ProfileId
+	DECLARE @UserId INT;
+	SELECT @UserId = UserId FROM UniversityAlma.[User] WHERE ProfileId = @ProfileId;
+	-- Return the new userId
+	SELECT @UserId AS UserId;
+END;
+GO
+--Login
+CREATE PROCEDURE UniversityAlma.LoginUser
+	@Username VARCHAR(50),
+	@Password VARCHAR(120)
+AS
+BEGIN
+	SET NOCOUNT ON
+	-- Check if username and password match
+	IF EXISTS (SELECT 1 FROM UniversityAlma.Profile WHERE Username = @Username AND Password = @Password)
+	BEGIN
+		-- Retrieve UserId
+		SELECT UserId
+		FROM UniversityAlma.[User]
+		WHERE ProfileId = (SELECT ProfileId FROM UniversityAlma.Profile WHERE Username = @Username);
+	END
+	ELSE
+	BEGIN
+		-- Return error because the credentials are invalid
+		RAISERROR('Invalid username or password', 16, 1);
+	END
+END;
+GO
+-- Mentor registration
+CREATE PROCEDURE UniversityAlma.RegisterMentor
+	@Name VARCHAR(100),
+	@Password VARCHAR(120),
+	@Email VARCHAR(100),
+    @Username VARCHAR(50),
+    @PhoneNumber VARCHAR(15),
+    @Gender VARCHAR(10),
+    @ProfilePic VARBINARY(255),
+    @Birthday DATE,
+    @MailList BIT,
+    @Experience VARCHAR(MAX)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	-- Insert the new profile
+	INSERT INTO UniversityAlma.Profile(Name, Password, Email, Username, PhoneNumber, Gender, ProfilePic, Birthday, MailList)
+	VALUES (@Name, @Password, @Email, @Username, @PhoneNumber, @Gender, @ProfilePic, @Birthday, @MailList);
+	-- Retrieve new ProfileId
+	DECLARE @ProfileId INT;
+	SET @ProfileId = SCOPE_IDENTITY();
+	-- Get the UserId
+	DECLARE @UserId INT;
+	SELECT @UserId = UserId FROM UniversityAlma.[User] WHERE ProfileId = @ProfileId;
+	-- Insert into mentor table (with verification pending)
+	INSERT INTO UniversityAlma.Mentor(UserId, Experience, Verified)
+	VALUES (@UserId, @Experience, 0);
+	-- Return the new UserId
+	SELECT @UserId AS UserId;
+END;
+GO
 --
 
 -- Trigger for audit notification
