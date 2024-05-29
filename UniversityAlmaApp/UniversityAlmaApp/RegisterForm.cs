@@ -89,6 +89,10 @@ namespace UniversityAlmaApp
             if (userId > 0)
             {
                 // Registration successfull
+                MainForm mainForm = new MainForm(userId);
+                this.Hide();
+                mainForm.ShowDialog();
+                this.Show();
             }
 
 

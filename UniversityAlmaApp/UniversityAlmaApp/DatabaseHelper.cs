@@ -10,7 +10,7 @@ namespace UniversityAlmaApp
 {
     internal class DatabaseHelper
     {
-        private static string connectionString = @"Server=tcp:mednat.ieeta.pt\SQLSERVER,8101;Database=p11g8;User Id=p11g8;Password=@ILtq123;";
+        public static string connectionString = @"Server=tcp:mednat.ieeta.pt\SQLSERVER,8101;Database=p11g8;User Id=p11g8;Password=@ILtq123;";
 
         public static int ExecuteScalar(string storedProcedure, SqlParameter[] parameters)
         {

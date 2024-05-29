@@ -56,6 +56,12 @@ namespace UniversityAlmaApp
             {
                 LoggedInUserId = userId;
                 MessageBox.Show("Login successful! UserId: " + userId);
+
+                // Open MainForm
+                MainForm mainForm = new MainForm(userId);
+                this.Hide();
+                mainForm.ShowDialog();
+                this.Show();
             }
             else
             {
