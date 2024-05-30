@@ -40,6 +40,7 @@
             cbSorting = new ComboBox();
             txtSearch = new TextBox();
             lblSearch = new Label();
+            btnUser = new Button();
             SuspendLayout();
             // 
             // label1
@@ -155,11 +156,23 @@
             lblSearch.TabIndex = 11;
             lblSearch.Text = "Search";
             // 
+            // btnUser
+            // 
+            btnUser.Font = new Font("Segoe UI", 11F);
+            btnUser.Location = new Point(576, 86);
+            btnUser.Name = "btnUser";
+            btnUser.Size = new Size(103, 41);
+            btnUser.TabIndex = 12;
+            btnUser.Text = "Users";
+            btnUser.UseVisualStyleBackColor = true;
+            btnUser.Click += btnUser_Click;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(798, 648);
+            Controls.Add(btnUser);
             Controls.Add(lblSearch);
             Controls.Add(txtSearch);
             Controls.Add(cbSorting);
@@ -192,5 +205,6 @@
         private ComboBox cbSorting;
         private TextBox txtSearch;
         private Label lblSearch;
+        private Button btnUser;
     }
 }

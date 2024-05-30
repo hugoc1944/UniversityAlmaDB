@@ -17,15 +17,26 @@ namespace UniversityAlmaApp
         private string userName;
         private int categoryId;
         private Panel panelNotifications;
+        private Panel panelUsers;
         public MainForm(int userId)
         {
             InitializeComponent();
             this.userInt = userId;
             this.userName = GetUserName(userId);
             lblUserName.Text = "Welcome, " + userName + "!";
-            if (IsUserMentor(userId))
+
+            if (IsUserAdmin(userId))
             {
                 btnBecomeMentor.Visible = false;
+                btnUser.Visible = true;
+            }
+            else
+            {
+                btnUser.Visible = false;
+                if (IsUserMentor(userId))
+                {
+                    btnBecomeMentor.Visible = false;
+                }
             }
 
             cbSorting.Items.Add("Oldest");
@@ -52,6 +63,15 @@ namespace UniversityAlmaApp
                 Visible = false // Initially hidden
             };
             Controls.Add(panelNotifications);
+            panelUsers = new Panel
+            {
+                Dock = DockStyle.None,
+                Size = new Size(700, 300),
+                Location = new Point(48, 185),
+                Visible = false // Initially hidden
+            };
+            Controls.Add(panelUsers);
+            btnUser.Click += btnUser_Click;
         }
 
         private void cbSortingSelectedIndexChanged(object sender, EventArgs e)
@@ -65,6 +85,7 @@ namespace UniversityAlmaApp
         private void btnCourses_Click(object sender, EventArgs e)
         {
             panelNotifications.Visible = false;
+            panelUsers.Visible = false;
             panelCategories.Visible = true;
             panelCourses.Visible = true;
             cbSorting.Visible = true;
@@ -76,6 +97,7 @@ namespace UniversityAlmaApp
         private void btnNotifications_Click(object sender, EventArgs e)
         {
             panelNotifications.Visible = true;
+            panelUsers.Visible = false;
             panelCategories.Visible = false;
             panelCourses.Visible = false;
             cbSorting.Visible = false;
@@ -101,7 +123,25 @@ namespace UniversityAlmaApp
             loginForm.ShowDialog();
             this.Close();
         }
-
+        private bool IsUserAdmin(int userId)
+        {
+            bool isAdmin = false;
+            using (SqlConnection conn = new SqlConnection(DatabaseHelper.connectionString))
+            {
+                string query = "SELECT COUNT(1) FROM UniversityAlma.Admin WHERE UserId = @UserId";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    conn.Open();
+                    int count = (int)cmd.ExecuteScalar();
+                    if (count > 0)
+                    {
+                        isAdmin = true;
+                    }
+                }
+            }
+            return isAdmin;
+        }
         private bool IsUserMentor(int userId)
         {
             bool isMentor = false;
@@ -224,89 +264,89 @@ namespace UniversityAlmaApp
                 }
                 conn.Open();
                 using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
                     {
-                        while (reader.Read())
+                        int courseId = reader.GetInt32(0);
+                        string courseTitle = reader.GetString(1);
+                        string courseDescription = reader.GetString(2);
+                        long sessionCount = reader.GetInt64(3);
+                        int favCount = reader.GetInt32(4);
+
+                        Panel coursePanel = new Panel
                         {
-                            int courseId = reader.GetInt32(0);
-                            string courseTitle = reader.GetString(1);
-                            string courseDescription = reader.GetString(2);
-                            long sessionCount = reader.GetInt64(3);
-                            int favCount = reader.GetInt32(4);
+                            BorderStyle = BorderStyle.FixedSingle,
+                            Padding = new Padding(10),
+                            Margin = new Padding(10),
+                            Size = new Size(215, 225),
+                        };
 
-                            Panel coursePanel = new Panel
-                            {
-                                BorderStyle = BorderStyle.FixedSingle,
-                                Padding = new Padding(10),
-                                Margin = new Padding(10),
-                                Size = new Size(215, 225),
-                            };
+                        TableLayoutPanel courseLayout = new TableLayoutPanel
+                        {
+                            RowCount = 4,
+                            ColumnCount = 1,
+                            Dock = DockStyle.Fill
+                        };
 
-                            TableLayoutPanel courseLayout = new TableLayoutPanel
-                            {
-                                RowCount = 4,
-                                ColumnCount = 1,
-                                Dock = DockStyle.Fill
-                            };
+                        Label lblTitle = new Label
+                        {
+                            Text = courseTitle,
+                            Font = new Font("Open Sans", 12F, FontStyle.Bold),
+                            AutoSize = true
+                        };
 
-                            Label lblTitle = new Label
-                            {
-                                Text = courseTitle,
-                                Font = new Font("Open Sans", 12F, FontStyle.Bold),
-                                AutoSize = true
-                            };
+                        Label lblDescription = new Label
+                        {
+                            Text = courseDescription,
+                            Font = new Font("Segoe UI", 10F),
+                            AutoSize = false,
+                            Height = 60,
+                            Dock = DockStyle.Fill,
+                            TextAlign = ContentAlignment.TopLeft
+                        };
 
-                            Label lblDescription = new Label
-                            {
-                                Text = courseDescription,
-                                Font = new Font("Segoe UI", 10F),
-                                AutoSize = false,
-                                Height = 60,
-                                Dock = DockStyle.Fill,
-                                TextAlign = ContentAlignment.TopLeft
-                            };
+                        Label lblSessionCount = new Label
+                        {
+                            Text = sessionCount + " Sessions",
+                            Font = new Font("Segoe UI", 10F),
+                            AutoSize = true
+                        };
 
-                            Label lblSessionCount = new Label
-                            {
-                                Text = sessionCount + " Sessions",
-                                Font = new Font("Segoe UI", 10F),
-                                AutoSize = true
-                            };
+                        Label lblFav = new Label
+                        {
+                            Text = $"{favCount} Favorites",
+                            Font = new Font("Segoe UI", 10F),
+                            AutoSize = true
+                        };
 
-                            Label lblFav = new Label
-                            {
-                                Text = $"{favCount} Favorites",
-                                Font = new Font("Segoe UI", 10F),
-                                AutoSize = true
-                            };
+                        Button btnPlay = new Button
+                        {
+                            Text = "Play",
+                            Tag = courseId,
+                            AutoSize = true
+                        };
 
-                            Button btnPlay = new Button
-                            {
-                                Text = "Play",
-                                Tag = courseId,
-                                AutoSize = true
-                            };
+                        Button btnFav = new Button
+                        {
+                            Text = IsFavorite(courseId) ? "Unfavourite" : "Favourite",
+                            Tag = courseId,
+                            AutoSize = true
+                        };
 
-                            Button btnFav = new Button
-                            {
-                                Text = IsFavorite(courseId) ? "Unfavourite" : "Favourite",
-                                Tag = courseId,
-                                AutoSize = true
-                            };
+                        btnPlay.Click += BtnPlayClick;
+                        btnFav.Click += BtnFavClick;
 
-                            btnPlay.Click += BtnPlayClick;
-                            btnFav.Click += BtnFavClick;
+                        courseLayout.Controls.Add(lblTitle, 0, 0);
+                        courseLayout.Controls.Add(lblDescription, 0, 1);
+                        courseLayout.Controls.Add(lblSessionCount, 0, 2);
+                        courseLayout.Controls.Add(lblFav, 0, 3);
+                        courseLayout.Controls.Add(btnPlay, 0, 4);
+                        courseLayout.Controls.Add(btnFav, 0, 5);
 
-                            courseLayout.Controls.Add(lblTitle, 0, 0);
-                            courseLayout.Controls.Add(lblDescription, 0, 1);
-                            courseLayout.Controls.Add(lblSessionCount, 0, 2);
-                            courseLayout.Controls.Add(lblFav, 0, 3);
-                            courseLayout.Controls.Add(btnPlay, 0, 4);
-                            courseLayout.Controls.Add(btnFav, 0, 5);
-
-                            coursePanel.Controls.Add(courseLayout);
-                            panelCourses.Controls.Add(coursePanel);
-                        }
+                        coursePanel.Controls.Add(courseLayout);
+                        panelCourses.Controls.Add(coursePanel);
                     }
+                }
             }
         }
 
@@ -471,6 +511,41 @@ namespace UniversityAlmaApp
 
             // Reload notifications
             LoadNotifications();
+        }
+
+        private void LoadUsers()
+        {
+            DataGridView dgvUsers = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+            };
+            panelUsers.Controls.Clear();
+            panelUsers.Controls.Add(dgvUsers);
+            DataTable usersTable = new DataTable();
+            using (SqlConnection conn = new SqlConnection(DatabaseHelper.connectionString))
+            {
+                string query = "SELECT Name, Username, Age, Email, Mentor FROM UniversityAlma.vwUserDetails";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    conn.Open();
+                    SqlDataAdapter adapter = new SqlDataAdapter(cmd);
+                    adapter.Fill(usersTable);
+                }
+            }
+            dgvUsers.DataSource = usersTable;
+        }
+
+        private void btnUser_Click(object sender, EventArgs e)
+        {
+            panelNotifications.Visible = false;
+            panelCategories.Visible = false;
+            panelCourses.Visible = false;
+            panelUsers.Visible = true;
+            cbSorting.Visible = false;
+            lblSearch.Visible = false;
+            txtSearch.Visible = false;
+            LoadUsers();
         }
     }
 }
