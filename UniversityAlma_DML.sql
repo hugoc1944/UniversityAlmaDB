@@ -302,41 +302,48 @@ BEGIN
 	END
 END;
 GO
-DROP PROCEDURE IF EXISTS UniversityAlma.RegisterMentor;
+
+-- Add favorite
+DROP PROCEDURE IF EXISTS UniversityAlma.AddFavorite;
 GO
--- Mentor registration
-CREATE PROCEDURE UniversityAlma.RegisterMentor
-	@Name VARCHAR(100),
-	@Password VARCHAR(120),
-	@Email VARCHAR(100),
-    @Username VARCHAR(50),
-    @PhoneNumber VARCHAR(15),
-    @Gender VARCHAR(10),
-    @ProfilePic VARBINARY(MAX), -- Default is NULL
-    @Birthday DATE,
-    @MailList BIT,
-    @Experience VARCHAR(MAX)
+CREATE PROCEDURE UniversityAlma.AddFavorite
+	@ProfileId INT,
+	@CourseId INT
 AS
 BEGIN
 	SET NOCOUNT ON;
-	-- Insert the new profile
-	INSERT INTO UniversityAlma.Profile(Name, Password, Email, Username, PhoneNumber, Gender, ProfilePic, Birthday, MailList)
-	VALUES (@Name, @Password, @Email, @Username, @PhoneNumber, @Gender, @ProfilePic, @Birthday, @MailList);
-	-- Retrieve new ProfileId
-	DECLARE @ProfileId INT;
-	SET @ProfileId = SCOPE_IDENTITY();
-	-- Get the UserId
-	DECLARE @UserId INT;
-	SELECT @UserId = UserId FROM UniversityAlma.[User] WHERE ProfileId = @ProfileId;
-	-- Insert into mentor table (with verification pending)
-	INSERT INTO UniversityAlma.Mentor(UserId, Experience, Verified)
-	VALUES (@UserId, @Experience, 0);
-	-- Return the new UserId
-	SELECT @UserId AS UserId;
+
+	IF NOT EXISTS (SELECT 1 FROM UniversityAlma.Favorites WHERE ProfileId = @ProfileId AND CourseId = @CourseId)
+	BEGIN
+		-- Insert favorite
+		INSERT INTO UniversityAlma.Favorites(ProfileId, CourseId)
+		VALUES (@ProfileId, @CourseId);
+	END
+END;
+GO
+-- Remove favorite
+DROP PROCEDURE IF EXISTS UniversityAlma.RemoveFavorite;
+GO
+CREATE PROCEDURE UniversityAlma.RemoveFavorite
+	@ProfileId INT,
+	@CourseId INT
+AS
+BEGIN
+	SET NOCOUNT ON
+
+	-- Check if favorite exists
+	IF EXISTS (SELECT 1 FROM UniversityAlma.Favorites WHERE ProfileId = @ProfileId AND CourseId = @CourseId)
+	BEGIN
+		-- Delete the favorite
+		DELETE FROM UniversityAlma.Favorites
+		WHERE ProfileId = @ProfileId AND CourseId = @CourseId;
+	END
 END;
 GO
 --
-
+--
+DROP TRIGGER IF EXISTS TrigAuditNotification;
+GO
 -- Trigger for audit notification
 CREATE TRIGGER TrigAuditNotification
 ON UniversityAlma.Audits
@@ -345,10 +352,12 @@ AS
 BEGIN
 	-- Insert notification for userId referenced by the audit
 	INSERT INTO UniversityAlma.Notification(UserId, Title, Info, Icon)
-	SELECT i.UserId, at.AuditTypeName, '', 'alert.png'
+	SELECT m.UserId, at.AuditTypeName, '', 'alert.png'
 	FROM inserted i
 	JOIN UniversityAlma.AuditTypes at ON i.AuditTypeId = at.AuditTypeId
-	WHERE i.UserId IS NOT NULL;
+	JOIN UniversityAlma.Course c ON i.CourseId = c.CourseId
+	JOIN UniversityAlma.Mentor m ON c.MentorId = m.MentorId
+	WHERE m.UserId IS NOT NULL;
 END;
 GO
 
@@ -528,4 +537,88 @@ BEGIN
 	CLOSE cur;
 	DEALLOCATE cur;
 END;
+GO
+
+-- FavCount trigger
+CREATE TRIGGER trigAddFavorite
+ON UniversityAlma.Favorites
+AFTER INSERT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	UPDATE UniversityAlma.Course
+	SET FavCount = FavCount + 1
+	WHERE CourseId IN (SELECT CourseId FROM inserted);
+END;
+GO
+CREATE TRIGGER trigRemoveFavorite
+ON UniversityAlma.Favorites
+AFTER DELETE
+AS
+BEGIN
+	SET NOCOUNT ON;
+	UPDATE UniversityAlma.Course
+	SET FavCount = FavCount - 1
+	WHERE CourseId in (SELECT CourseId FROM deleted);
+END;
+GO
+-- Views
+
+-- View to get all course details
+DROP VIEW IF EXISTS UniversityAlma.vwCourseDetails;
+GO
+CREATE VIEW UniversityAlma.vwCourseDetails
+WITH SCHEMABINDING
+AS
+SELECT
+	c.CourseId,
+	c.Title,
+	c.Description,
+	c.CategoryId,
+	c.MentorId,
+	m.Experience AS MentorExperience,
+    COUNT_BIG(s.SessionId) AS SessionCount,
+	c.FavCount,
+	COUNT_BIG(*) AS CountBigAll  -- Required for indexed views
+FROM 
+    UniversityAlma.Course c
+JOIN 
+    UniversityAlma.Mentor m ON c.MentorId = m.MentorId
+JOIN 
+    UniversityAlma.Session s ON c.CourseId = s.CourseId
+GROUP BY
+    c.CourseId,
+    c.Title,
+    c.Description,
+    c.CategoryId,
+    c.MentorId,
+    m.Experience,
+    c.FavCount;
+GO
+CREATE UNIQUE CLUSTERED INDEX IX_vwCourseDetails_CourseId
+ON UniversityAlma.vwCourseDetails (CourseId);
+GO
+-- UDF
+-- UDF for search courses functionality
+CREATE FUNCTION UniversityAlma.fnSearchCourses
+(
+    @CategoryId INT,
+    @SearchTerm VARCHAR(100)
+)
+RETURNS TABLE
+AS
+RETURN
+(
+	SELECT CourseId, Title, Description, SessionCount, FavCount
+	FROM UniversityAlma.vwCourseDetails
+	WHERE CategoryId = @CategoryId
+		AND (Title LIKE '%' + @SearchTerm + '%' OR Description LIKE '%' + @SearchTerm + '%')
+);
+GO
+-- Apply indexes to optimize search
+CREATE INDEX IX_vwCourseDetails_Title
+ON UniversityAlma.vwCourseDetails (Title);
+GO
+CREATE INDEX IX_vwCourseDetails_Description
+ON UniversityAlma.vwCourseDetails (Description);
 GO

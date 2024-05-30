@@ -44,6 +44,11 @@ INSERT INTO UniversityAlma.Course (Title, Description, CategoryId, MentorId) VAL
 ('Sleeping Audios', 'Audios to calm your mind. Listen in a quiet and relaxing ambient.', 2, 1);
 GO
 
+-- Insert courses
+INSERT INTO UniversityAlma.Course (Title, Description, CategoryId, MentorId) VALUES
+('Temp Course', 'TempCourse description', 1, 1)
+GO
+
 -- Insert sessions
 INSERT INTO UniversityAlma.Session (CourseId, Title, Media, Duration) VALUES
 (1, 'Ocean Sounds', 'ocean_sounds.mp3', 93),

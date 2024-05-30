@@ -37,6 +37,9 @@
             lblUserName = new Label();
             panelCategories = new FlowLayoutPanel();
             panelCourses = new FlowLayoutPanel();
+            cbSorting = new ComboBox();
+            txtSearch = new TextBox();
+            lblSearch = new Label();
             SuspendLayout();
             // 
             // label1
@@ -122,16 +125,44 @@
             // 
             // panelCourses
             // 
-            panelCourses.Location = new Point(48, 234);
+            panelCourses.Location = new Point(48, 266);
             panelCourses.Name = "panelCourses";
-            panelCourses.Size = new Size(704, 279);
+            panelCourses.Size = new Size(704, 348);
             panelCourses.TabIndex = 8;
+            // 
+            // cbSorting
+            // 
+            cbSorting.FormattingEnabled = true;
+            cbSorting.Location = new Point(48, 232);
+            cbSorting.Name = "cbSorting";
+            cbSorting.Size = new Size(151, 28);
+            cbSorting.TabIndex = 9;
+            // 
+            // txtSearch
+            // 
+            txtSearch.Location = new Point(544, 232);
+            txtSearch.Name = "txtSearch";
+            txtSearch.Size = new Size(208, 27);
+            txtSearch.TabIndex = 10;
+            // 
+            // lblSearch
+            // 
+            lblSearch.AutoSize = true;
+            lblSearch.Font = new Font("Segoe UI", 12F);
+            lblSearch.Location = new Point(544, 201);
+            lblSearch.Name = "lblSearch";
+            lblSearch.Size = new Size(70, 28);
+            lblSearch.TabIndex = 11;
+            lblSearch.Text = "Search";
             // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 525);
+            ClientSize = new Size(798, 648);
+            Controls.Add(lblSearch);
+            Controls.Add(txtSearch);
+            Controls.Add(cbSorting);
             Controls.Add(panelCourses);
             Controls.Add(panelCategories);
             Controls.Add(lblUserName);
@@ -158,5 +189,8 @@
         private Label lblUserName;
         private FlowLayoutPanel panelCategories;
         private FlowLayoutPanel panelCourses;
+        private ComboBox cbSorting;
+        private TextBox txtSearch;
+        private Label lblSearch;
     }
 }
