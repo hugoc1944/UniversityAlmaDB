@@ -540,26 +540,39 @@ END;
 GO
 
 -- FavCount trigger
+DROP TRIGGER IF EXISTS trigAddFavorite;
+GO
 CREATE TRIGGER trigAddFavorite
 ON UniversityAlma.Favorites
 AFTER INSERT
 AS
 BEGIN
-	SET NOCOUNT ON;
-	UPDATE UniversityAlma.Course
-	SET FavCount = FavCount + 1
-	WHERE CourseId IN (SELECT CourseId FROM inserted);
+    UPDATE c
+    SET c.FavCount = c.FavCount + i.FavCount
+    FROM UniversityAlma.Course c
+    JOIN (
+        SELECT CourseId, COUNT(*) AS FavCount
+        FROM inserted
+        GROUP BY CourseId
+    ) i ON c.CourseId = i.CourseId;
 END;
+GO
+
+DROP TRIGGER IF EXISTS trigRemoveFavorite;
 GO
 CREATE TRIGGER trigRemoveFavorite
 ON UniversityAlma.Favorites
 AFTER DELETE
 AS
 BEGIN
-	SET NOCOUNT ON;
-	UPDATE UniversityAlma.Course
-	SET FavCount = FavCount - 1
-	WHERE CourseId in (SELECT CourseId FROM deleted);
+    UPDATE c
+    SET c.FavCount = c.FavCount - d.FavCount
+    FROM UniversityAlma.Course c
+    JOIN (
+        SELECT CourseId, COUNT(*) AS FavCount
+        FROM deleted
+        GROUP BY CourseId
+    ) d ON c.CourseId = d.CourseId;
 END;
 GO
 -- Views
@@ -578,7 +591,7 @@ SELECT
 	c.MentorId,
 	m.Experience AS MentorExperience,
     COUNT_BIG(s.SessionId) AS SessionCount,
-	c.FavCount,
+	c.FavCount AS FavCount,
 	COUNT_BIG(*) AS CountBigAll  -- Required for indexed views
 FROM 
     UniversityAlma.Course c

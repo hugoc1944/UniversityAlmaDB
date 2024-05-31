@@ -18,13 +18,14 @@ namespace UniversityAlmaApp
         private int categoryId;
         private Panel panelNotifications;
         private Panel panelUsers;
+        private Panel panelProfile;
         public MainForm(int userId)
         {
             InitializeComponent();
             this.userInt = userId;
             this.userName = GetUserName(userId);
             lblUserName.Text = "Welcome, " + userName + "!";
-
+            btnUpload.Visible = false;
             if (IsUserAdmin(userId))
             {
                 btnBecomeMentor.Visible = false;
@@ -36,8 +37,10 @@ namespace UniversityAlmaApp
                 if (IsUserMentor(userId))
                 {
                     btnBecomeMentor.Visible = false;
+                    btnUpload.Visible = true;
                 }
             }
+            btnUpload.Click += BtnUpload_Click;
 
             cbSorting.Items.Add("Oldest");
             cbSorting.Items.Add("Newest");
@@ -71,7 +74,17 @@ namespace UniversityAlmaApp
                 Visible = false // Initially hidden
             };
             Controls.Add(panelUsers);
+            panelProfile = new Panel
+            {
+                Dock = DockStyle.None,
+                Size = new Size(700, 300),
+                Location = new Point(48, 185),
+                Visible = true // Show profile panel
+            };
+            Controls.Add(panelProfile);
             btnUser.Click += btnUser_Click;
+
+            panelCourseContainer.Controls.Add(panelCourses);
         }
 
         private void cbSortingSelectedIndexChanged(object sender, EventArgs e)
@@ -91,6 +104,8 @@ namespace UniversityAlmaApp
             cbSorting.Visible = true;
             lblSearch.Visible = false;
             txtSearch.Visible = false;
+            panelProfile.Visible = false;
+            panelCourseContainer.Visible = true;
             LoadCategories();
         }
 
@@ -100,15 +115,33 @@ namespace UniversityAlmaApp
             panelUsers.Visible = false;
             panelCategories.Visible = false;
             panelCourses.Visible = false;
+            panelCourseContainer.Visible = false;
             cbSorting.Visible = false;
             lblSearch.Visible = false;
             txtSearch.Visible = false;
+            panelProfile.Visible = false;
+
             LoadNotifications();
         }
-
+        private void BtnUpload_Click(object sender, EventArgs e)
+        {
+            using var uploadForm = new UploadCourse(GetMentorId(userInt));
+            {
+                uploadForm.ShowDialog();
+            }
+        }
         private void btnProfile_Click(object sender, EventArgs e)
         {
-
+            panelNotifications.Visible = false;
+            panelUsers.Visible = false;
+            panelCategories.Visible = false;
+            panelCourses.Visible = false;
+            panelCourseContainer.Visible = false;
+            cbSorting.Visible = false;
+            lblSearch.Visible = false;
+            txtSearch.Visible = false;
+            panelProfile.Visible = true;
+            LoadUserProfile();
         }
 
         private void btnBecomeMentor_Click(object sender, EventArgs e)
@@ -160,6 +193,19 @@ namespace UniversityAlmaApp
                 }
             }
             return isMentor;
+        }
+        private int GetMentorId(int userId)
+        {
+            using (SqlConnection conn = new SqlConnection(DatabaseHelper.connectionString))
+            {
+                string query = "SELECT MentorId FROM UniversityAlma.Mentor WHERE UserId = @UserId";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    conn.Open();
+                    return (int)cmd.ExecuteScalar();
+                }
+            }
         }
 
         private string GetUserName(int userId)
@@ -272,20 +318,23 @@ namespace UniversityAlmaApp
                         string courseDescription = reader.GetString(2);
                         long sessionCount = reader.GetInt64(3);
                         int favCount = reader.GetInt32(4);
+                        int height = IsUserAdmin(userInt) ? 265 : 225;
 
                         Panel coursePanel = new Panel
                         {
                             BorderStyle = BorderStyle.FixedSingle,
                             Padding = new Padding(10),
                             Margin = new Padding(10),
-                            Size = new Size(215, 225),
+                            Size = new Size(215, height),
+
+
                         };
 
                         TableLayoutPanel courseLayout = new TableLayoutPanel
                         {
                             RowCount = 4,
                             ColumnCount = 1,
-                            Dock = DockStyle.Fill
+                            Dock = DockStyle.Fill,
                         };
 
                         Label lblTitle = new Label
@@ -343,6 +392,19 @@ namespace UniversityAlmaApp
                         courseLayout.Controls.Add(btnPlay, 0, 4);
                         courseLayout.Controls.Add(btnFav, 0, 5);
 
+                        // Add delte btn if user is admin
+                        if (IsUserAdmin(userInt))
+                        {
+                            Button btnDelete = new Button
+                            {
+                                Text = "Delete",
+                                Tag = courseId,
+                                AutoSize = true
+                            };
+                            btnDelete.Click += BtnDeleteClick;
+                            courseLayout.Controls.Add(btnDelete, 0, 6);
+                        }
+
                         coursePanel.Controls.Add(courseLayout);
                         panelCourses.Controls.Add(coursePanel);
                     }
@@ -381,6 +443,117 @@ namespace UniversityAlmaApp
                 favButton.Text = "Unfavourite";
             }
             LoadCourses(categoryId);
+        }
+        private void BtnDeleteClick(object sender, EventArgs e)
+        {
+            Button deleteButton = (Button)sender;
+            int courseId = (int)deleteButton.Tag;
+            DialogResult result = MessageBox.Show("Are you sure you want to delete this course?", "Confirm Deletion", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (result == DialogResult.Yes)
+            {
+                using (SqlConnection conn = new SqlConnection(DatabaseHelper.connectionString))
+                {
+                    conn.Open();
+                    SqlTransaction transaction = conn.BeginTransaction();
+
+                    try
+                    {
+                        // Retrieve the course name
+                        string courseName = "";
+                        int courseCreatorUserId = 0;
+                        string getCourseDetailsQuery = @"
+                            SELECT c.Title, m.UserId
+                            FROM UniversityAlma.Course c
+                            JOIN UniversityAlma.Mentor m ON c.MentorId = m.MentorId
+                            WHERE c.CourseId = @CourseId";
+                        using (SqlCommand cmd = new SqlCommand(getCourseDetailsQuery, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@CourseId", courseId);
+                            using (SqlDataReader reader = cmd.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    courseName = reader.GetString(0);
+                                    courseCreatorUserId = reader.GetInt32(1);
+                                }
+                            }
+                        }
+                        // Delete the history associated with the sessions of the course
+                        string deleteHistoryQuery = @"
+                            DELETE h
+                            FROM UniversityAlma.History h
+                            JOIN UniversityAlma.Session s ON h.SessionNumber = s.SessionId
+                            WHERE s.CourseId = @CourseId";
+                        using (SqlCommand cmd = new SqlCommand(deleteHistoryQuery, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@CourseId", courseId);
+                            cmd.ExecuteNonQuery();
+                        }
+                        // Delete the favorites associated with the course
+                        string deleteFavoritesQuery = "DELETE FROM UniversityAlma.Favorites WHERE CourseId = @CourseId";
+                        using (SqlCommand cmd = new SqlCommand(deleteFavoritesQuery, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@CourseId", courseId);
+                            cmd.ExecuteNonQuery();
+                        }
+                        // Delete the audits associated with the course
+                        string deleteAuditsQuery = "DELETE FROM UniversityAlma.Audits WHERE CourseId = @CourseId";
+                        using (SqlCommand cmd = new SqlCommand(deleteAuditsQuery, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@CourseId", courseId);
+                            cmd.ExecuteNonQuery();
+                        }
+                        // Delete the sessions associated with the course
+                        string deleteSessionsQuery = "DELETE FROM UniversityAlma.Session WHERE CourseId = @CourseId";
+                        using (SqlCommand cmd = new SqlCommand(deleteSessionsQuery, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@CourseId", courseId);
+                            cmd.ExecuteNonQuery();
+                        }
+                        // Delete the course
+                        string query = "DELETE FROM UniversityAlma.Course WHERE CourseId = @CourseId";
+                        using (SqlCommand cmd = new SqlCommand(query, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@CourseId", courseId);
+                            cmd.ExecuteScalar();
+                        }
+
+                        // Create Notification
+                        string insertNotificationQuery = @"
+                            INSERT INTO UniversityAlma.Notification (UserId, Title, Info, Icon)
+                            VALUES (@UserId, @Title, @Info, 'delete.png')";
+                        using (SqlCommand cmd = new SqlCommand(insertNotificationQuery, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@UserId", courseCreatorUserId);
+                            cmd.Parameters.AddWithValue("@Title", "Course deleted");
+                            cmd.Parameters.AddWithValue("@Info", $"Your course {courseName} was deleted by an administrator");
+                            cmd.ExecuteNonQuery(); // Use ExecuteNonQuery for INSERT statements
+                        }
+                        transaction.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        MessageBox.Show($"An error occurred while deleting the course. Please try again.\n\nError: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+
+                // Reload courses
+                LoadCourses(categoryId);
+            }
+        }
+        private int GetAdminId(int userId)
+        {
+            using (SqlConnection conn = new SqlConnection(DatabaseHelper.connectionString))
+            {
+                string query = "SELECT AdminId FROM UniversityAlma.Admin WHERE UserId = @UserId";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    conn.Open();
+                    return (int)cmd.ExecuteScalar();
+                }
+            }
         }
 
         private bool IsFavorite(int courseId)
@@ -541,11 +714,69 @@ namespace UniversityAlmaApp
             panelNotifications.Visible = false;
             panelCategories.Visible = false;
             panelCourses.Visible = false;
+            panelCourseContainer.Visible = false;
             panelUsers.Visible = true;
             cbSorting.Visible = false;
             lblSearch.Visible = false;
             txtSearch.Visible = false;
             LoadUsers();
         }
+
+        private void LoadUserProfile()
+        {
+
+            PictureBox pictureBoxProfile = new PictureBox
+            {
+                Location = new Point(20, 20),
+                Size = new Size(150, 150),
+                SizeMode = PictureBoxSizeMode.Zoom
+            };
+            panelProfile.Controls.Add(pictureBoxProfile);
+
+            Label lblName = new Label { Location = new Point(200, 20), AutoSize = true };
+            panelProfile.Controls.Add(lblName);
+            Label lblUsername = new Label { Location = new Point(200, 50), AutoSize = true };
+            panelProfile.Controls.Add(lblUsername);
+            Label lblEmail = new Label { Location = new Point(200, 80), AutoSize = true };
+            panelProfile.Controls.Add(lblEmail);
+            Label lblPhoneNumber = new Label { Location = new Point(200, 110), AutoSize = true };
+            panelProfile.Controls.Add(lblPhoneNumber);
+            Label lblBirthday = new Label { Location = new Point(200, 140), AutoSize = true };
+            panelProfile.Controls.Add(lblBirthday);
+
+            using (SqlConnection conn = new SqlConnection(DatabaseHelper.connectionString))
+            {
+                string query = "SELECT Name, Username, Email, PhoneNumber, Birthday, ProfilePic FROM UniversityAlma.Profile p JOIN UniversityAlma.[User] u ON p.ProfileId = u.ProfileId WHERE u.UserId = @UserId";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@UserId", userInt);
+                    conn.Open();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            lblName.Text = "Name: " + reader.GetString(0);
+                            lblUsername.Text = "Username: " + reader.GetString(1);
+                            lblEmail.Text = "Email: " + reader.GetString(2);
+                            lblPhoneNumber.Text = "Phone Number: " + reader.GetString(3);
+                            lblBirthday.Text = "Birthday: " + reader.GetDateTime(4).ToShortDateString();
+                            if (!reader.IsDBNull(5))
+                            {
+                                byte[] profilePic = (byte[])reader[5];
+                                using (var ms = new System.IO.MemoryStream(profilePic))
+                                {
+                                    pictureBoxProfile.Image = Image.FromStream(ms);
+                                }
+                            }
+                            else
+                            {
+                                pictureBoxProfile.Image = Image.FromFile("/mnt/data/image.png");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     }
 }

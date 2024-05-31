@@ -41,6 +41,8 @@
             txtSearch = new TextBox();
             lblSearch = new Label();
             btnUser = new Button();
+            btnUpload = new Button();
+            panelCourseContainer = new FlowLayoutPanel();
             SuspendLayout();
             // 
             // label1
@@ -128,6 +130,8 @@
             // 
             panelCourses.Location = new Point(48, 266);
             panelCourses.Name = "panelCourses";
+            panelCourses.AutoSize = true;
+            panelCourses.FlowDirection = FlowDirection.TopDown;
             panelCourses.Size = new Size(704, 348);
             panelCourses.TabIndex = 8;
             // 
@@ -167,11 +171,31 @@
             btnUser.UseVisualStyleBackColor = true;
             btnUser.Click += btnUser_Click;
             // 
+            // btnUpload
+            // 
+            btnUpload.Font = new Font("Segoe UI", 11F);
+            btnUpload.Location = new Point(510, 86);
+            btnUpload.Name = "btnUpload";
+            btnUpload.Size = new Size(169, 41);
+            btnUpload.TabIndex = 13;
+            btnUpload.Text = "Upload Course";
+            btnUpload.UseVisualStyleBackColor = true;
+            // 
+            // panelCourseContainer
+            // 
+            this.panelCourseContainer.AutoScroll = true;
+            panelCourseContainer.Location = new Point(48, 266);
+            panelCourseContainer.Name = "panelCourseContainer";
+            panelCourseContainer.Size = new Size(704, 348);
+            panelCourseContainer.TabIndex = 14;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(798, 648);
+            Controls.Add(panelCourseContainer);
+            Controls.Add(btnUpload);
             Controls.Add(btnUser);
             Controls.Add(lblSearch);
             Controls.Add(txtSearch);
@@ -206,5 +230,7 @@
         private TextBox txtSearch;
         private Label lblSearch;
         private Button btnUser;
+        private Button btnUpload;
+        private FlowLayoutPanel panelCourseContainer;
     }
 }
