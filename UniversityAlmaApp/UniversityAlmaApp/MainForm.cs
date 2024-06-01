@@ -120,7 +120,6 @@ namespace UniversityAlmaApp
             lblSearch.Visible = false;
             txtSearch.Visible = false;
             panelProfile.Visible = false;
-
             LoadNotifications();
         }
         private void BtnUpload_Click(object sender, EventArgs e)
@@ -297,7 +296,7 @@ namespace UniversityAlmaApp
                 SqlCommand cmd;
                 if (string.IsNullOrEmpty(searchTerm))
                 {
-                    query = $"SELECT CourseId, Title, Description, SessionCount, FavCount FROM UniversityAlma.vwCourseDetails WHERE CategoryId = @CategoryId ORDER BY {sortingCriteria}";
+                    query = $"SELECT CourseId, Title, Description, SessionCount, FavCount, MentorId, IsDeleted FROM UniversityAlma.vwCourseDetails WHERE CategoryId = @CategoryId AND IsDeleted = 0 ORDER BY {sortingCriteria}";
                     cmd = new SqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@CategoryId", categoryId);
                 }
@@ -318,7 +317,8 @@ namespace UniversityAlmaApp
                         string courseDescription = reader.GetString(2);
                         long sessionCount = reader.GetInt64(3);
                         int favCount = reader.GetInt32(4);
-                        int height = IsUserAdmin(userInt) ? 265 : 225;
+                        int courseMentorId = reader.GetInt32(5);
+                        int height = IsUserAdmin(userInt) || IsUserMentor(userInt) ? 265 : 225;
 
                         Panel coursePanel = new Panel
                         {
@@ -393,7 +393,7 @@ namespace UniversityAlmaApp
                         courseLayout.Controls.Add(btnFav, 0, 5);
 
                         // Add delte btn if user is admin
-                        if (IsUserAdmin(userInt))
+                        if (IsUserAdmin(userInt) || (IsUserMentor(userInt) && courseMentorId == GetMentorId(userInt)))
                         {
                             Button btnDelete = new Button
                             {
@@ -418,7 +418,8 @@ namespace UniversityAlmaApp
             int courseId = (int)playButton.Tag;
 
             // Course play logic
-            MessageBox.Show("Playing course with ID: " + courseId);
+            using var sessionForm = new SessionForm(courseId);
+            sessionForm.ShowDialog();
         }
 
         private void BtnFavClick(object sender, EventArgs e)
@@ -478,57 +479,29 @@ namespace UniversityAlmaApp
                                 }
                             }
                         }
-                        // Delete the history associated with the sessions of the course
-                        string deleteHistoryQuery = @"
-                            DELETE h
-                            FROM UniversityAlma.History h
-                            JOIN UniversityAlma.Session s ON h.SessionNumber = s.SessionId
-                            WHERE s.CourseId = @CourseId";
-                        using (SqlCommand cmd = new SqlCommand(deleteHistoryQuery, conn, transaction))
-                        {
-                            cmd.Parameters.AddWithValue("@CourseId", courseId);
-                            cmd.ExecuteNonQuery();
-                        }
-                        // Delete the favorites associated with the course
-                        string deleteFavoritesQuery = "DELETE FROM UniversityAlma.Favorites WHERE CourseId = @CourseId";
-                        using (SqlCommand cmd = new SqlCommand(deleteFavoritesQuery, conn, transaction))
-                        {
-                            cmd.Parameters.AddWithValue("@CourseId", courseId);
-                            cmd.ExecuteNonQuery();
-                        }
-                        // Delete the audits associated with the course
-                        string deleteAuditsQuery = "DELETE FROM UniversityAlma.Audits WHERE CourseId = @CourseId";
-                        using (SqlCommand cmd = new SqlCommand(deleteAuditsQuery, conn, transaction))
-                        {
-                            cmd.Parameters.AddWithValue("@CourseId", courseId);
-                            cmd.ExecuteNonQuery();
-                        }
-                        // Delete the sessions associated with the course
-                        string deleteSessionsQuery = "DELETE FROM UniversityAlma.Session WHERE CourseId = @CourseId";
-                        using (SqlCommand cmd = new SqlCommand(deleteSessionsQuery, conn, transaction))
-                        {
-                            cmd.Parameters.AddWithValue("@CourseId", courseId);
-                            cmd.ExecuteNonQuery();
-                        }
-                        // Delete the course
-                        string query = "DELETE FROM UniversityAlma.Course WHERE CourseId = @CourseId";
-                        using (SqlCommand cmd = new SqlCommand(query, conn, transaction))
+                        string deleteQuery = "UPDATE UniversityAlma.Course SET IsDeleted = 1 WHERE CourseId = @CourseId";
+                        using(SqlCommand cmd = new SqlCommand(deleteQuery, conn, transaction))
                         {
                             cmd.Parameters.AddWithValue("@CourseId", courseId);
                             cmd.ExecuteScalar();
                         }
-
-                        // Create Notification
-                        string insertNotificationQuery = @"
-                            INSERT INTO UniversityAlma.Notification (UserId, Title, Info, Icon)
-                            VALUES (@UserId, @Title, @Info, 'delete.png')";
-                        using (SqlCommand cmd = new SqlCommand(insertNotificationQuery, conn, transaction))
+                        // Create Audit Entry
+                        if (IsUserAdmin(userInt))
                         {
-                            cmd.Parameters.AddWithValue("@UserId", courseCreatorUserId);
-                            cmd.Parameters.AddWithValue("@Title", "Course deleted");
-                            cmd.Parameters.AddWithValue("@Info", $"Your course {courseName} was deleted by an administrator");
-                            cmd.ExecuteNonQuery(); // Use ExecuteNonQuery for INSERT statements
+                            string insertAuditQuery = @"
+                            INSERT INTO UniversityAlma.Audits (AdminId, UserId, CourseId, AuditTypeId, Date)
+                            VALUES (@AdminId, @UserId, @CourseId, @AuditTypeId, GETDATE())";
+                            using (SqlCommand cmd = new SqlCommand(insertAuditQuery, conn, transaction))
+                            {
+                                cmd.Parameters.AddWithValue("@AdminId", GetAdminId(userInt));
+                                cmd.Parameters.AddWithValue("@UserId", courseCreatorUserId);
+                                cmd.Parameters.AddWithValue("@CourseId", courseId);
+                                cmd.Parameters.AddWithValue("@AuditTypeId", 4);
+                                cmd.ExecuteNonQuery();
+                            }
+
                         }
+
                         transaction.Commit();
                     }
                     catch (Exception ex)
@@ -770,7 +743,7 @@ namespace UniversityAlmaApp
                             }
                             else
                             {
-                                pictureBoxProfile.Image = Image.FromFile("/mnt/data/image.png");
+                                pictureBoxProfile.Image = Properties.Resources.defaultPfp;
                             }
                         }
                     }

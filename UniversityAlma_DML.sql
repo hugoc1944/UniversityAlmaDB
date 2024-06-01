@@ -70,6 +70,7 @@ CREATE TABLE UniversityAlma.Course(
 	CategoryId INT NOT NULL,
 	MentorId INT NOT NULL,
 	FavCount INT DEFAULT 0,
+	IsDeleted BIT DEFAULT 0
 
 	CONSTRAINT  FK_Course_Category FOREIGN KEY (CategoryId) REFERENCES UniversityAlma.Category(CategoryId),
 	CONSTRAINT FK_Course_Mentor FOREIGN KEY (MentorId) REFERENCES UniversityAlma.Mentor(MentorId)
@@ -592,7 +593,8 @@ SELECT
 	m.Experience AS MentorExperience,
     COUNT_BIG(s.SessionId) AS SessionCount,
 	c.FavCount AS FavCount,
-	COUNT_BIG(*) AS CountBigAll  -- Required for indexed views
+	COUNT_BIG(*) AS CountBigAll,  -- Required for indexed views
+	c.IsDeleted
 FROM 
     UniversityAlma.Course c
 JOIN 
@@ -606,7 +608,8 @@ GROUP BY
     c.CategoryId,
     c.MentorId,
     m.Experience,
-    c.FavCount;
+    c.FavCount,
+	c.IsDeleted;
 GO
 CREATE UNIQUE CLUSTERED INDEX IX_vwCourseDetails_CourseId
 ON UniversityAlma.vwCourseDetails (CourseId);
